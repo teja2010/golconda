@@ -1,44 +1,47 @@
 package jsonc
 
 import (
-	"strings"
 	"encoding/json"
 	"errors"
-	 d "github.com/teja2010/golconda/src/debug"
+	"strings"
+
+	d "github.com/teja2010/golconda/src/debug"
 )
 
+// All the chars which are of importance
 const (
-	NEWLINE = "\n"
+	NEWLINE         = "\n"
 	SINGLE_LINE_CMT = `//`
 	BLOCK_CMT_START = `/*`
-	BLOCK_CMT_END = `*/`
+	BLOCK_CMT_END   = `*/`
 )
 
+// Unmarshal a commented json
 func Unmarshal(data []byte, v interface{}) error {
-	str_content := string(data)
-	
-	err := blkCommentCheck(str_content)
+	strContent := string(data)
+
+	err := blkCommentCheck(strContent)
 	if err != nil {
 		d.Error("blkCommentCheck failed", err)
 		return err
 	}
 
-	lines := strings.Split(str_content, BLOCK_CMT_END)
-	lines, err = fmapM(lines, remove_blk_comments)
+	lines := strings.Split(strContent, BLOCK_CMT_END)
+	lines, err = fmapM(lines, removeBlkComments)
 	if err != nil {
-		d.Error("remove_blk_comments failed", err)
+		d.Error("removeBlkComments failed", err)
 		return err
 	}
-	str_content = strings.Join(lines, "")
+	strContent = strings.Join(lines, "")
 
-	lines = strings.Split(str_content, NEWLINE)
-	lines, err = fmapM(lines, remove_single_line_comment)
+	lines = strings.Split(strContent, NEWLINE)
+	lines, err = fmapM(lines, removeSingleLineComment)
 	if err != nil {
-		d.Error("remove_single_line_comment failed", err)
+		d.Error("removeSingleLineComment failed", err)
 		return err
 	}
 
-	lines = filter(lines, non_empty_lines)
+	lines = filter(lines, nonEmptyLines)
 
 	data = []byte(strings.Join(lines, NEWLINE))
 	//d.DebugLog("Uncommented config \n", string(data))
@@ -54,6 +57,8 @@ func Unmarshal(data []byte, v interface{}) error {
 
 type fmapFunc func(string) (string, error)
 
+// fmapM is not exactly fmap (structure is not preserved),
+// it is a Monadic version of fmap
 func fmapM(lines []string, f fmapFunc) ([]string, error) {
 	res := make([]string, len(lines))
 
@@ -82,17 +87,16 @@ func filter(lines []string, f func(string) bool) []string {
 	return res
 }
 
-func remove_blk_comments(l string) (string, error) {
+func removeBlkComments(l string) (string, error) {
 	return trimSuffixStartsWith(l, BLOCK_CMT_START)
-
 }
 
-func remove_single_line_comment(l string) (string, error) {
+func removeSingleLineComment(l string) (string, error) {
 	return trimSuffixStartsWith(l, SINGLE_LINE_CMT)
 }
 
 func trimSuffixStartsWith(l string, suffix string) (
-				string, error) {
+	string, error) {
 
 	splits := strings.SplitN(l, suffix, 2)
 	if len(splits) == 1 {
@@ -102,19 +106,20 @@ func trimSuffixStartsWith(l string, suffix string) (
 		return l2, nil
 	}
 
-	return l, errors.New("trimSuffixStartsWith: SplitAfterN (" + suffix +
-			     ") returned more than 2 elements :" + l)
+	return l,
+		errors.New("trimSuffixStartsWith: SplitAfterN (" + suffix +
+			") returned more than 2 elements :" + l)
 }
 
-func non_empty_lines (l string) bool {
+func nonEmptyLines(l string) bool {
 	return l != ""
 }
 
 func blkCommentCheck(str string) error {
-	start_count := strings.Count(str, BLOCK_CMT_START)
-	end_count := strings.Count(str, BLOCK_CMT_END)
+	startCount := strings.Count(str, BLOCK_CMT_START)
+	endCount := strings.Count(str, BLOCK_CMT_END)
 
-	if end_count > start_count {
+	if endCount > startCount {
 		return errors.New("More '*/'s found that matching '/*'s")
 	}
 	return nil

@@ -5,6 +5,7 @@ import (
 	ui "github.com/teja2010/golconda/src/ui"
 )
 
+// Start golconda
 func Start() {
 	ConfigInit()
 

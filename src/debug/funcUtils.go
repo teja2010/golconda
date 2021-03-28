@@ -3,42 +3,41 @@ package debug
 import (
 	"fmt"
 	"runtime"
+	runtime_debug "runtime/debug"
 	"strconv"
 	"strings"
-	runtime_debug "runtime/debug"
 )
 
 type logFunc struct {
-	pc uintptr
-	name string
-	file_name string
-	line int
+	pc       uintptr
+	name     string
+	fileName string
+	line     int
 }
 
 func (f logFunc) String() string {
 	str := fmt.Sprintf("%x %s %s:%d", f.pc, f.name,
-			f.file_name, f.line);
+		f.fileName, f.line)
 	return str
 }
-func removePathPrefix (name string, seperator string) string {
-	last_idx := strings.LastIndex(name, seperator)
-	if last_idx > 0 {
-		name = name[last_idx+1:]
+func removePathPrefix(name string, seperator string) string {
+	lastIdx := strings.LastIndex(name, seperator)
+	if lastIdx > 0 {
+		name = name[lastIdx+1:]
 	}
 
 	return name
 }
 
-
 func (f logFunc) logPrefix() string {
 	str := fmt.Sprintf("%s %s:%d",
-			   removePathPrefix(f.name, `/`),
-			   removePathPrefix(f.file_name, `/`),
-			   f.line);
+		removePathPrefix(f.name, `.`),
+		removePathPrefix(f.fileName, `/`),
+		f.line)
 	return str
 }
 
-func invalidLogFunc(pc uintptr) logFunc{
+func invalidLogFunc(pc uintptr) logFunc {
 	return logFunc{pc, "INVALID_LOGFUNC", "", -1}
 }
 
@@ -53,37 +52,38 @@ func getCallerFunc(skip int) logFunc {
 
 func getCallSite(skip int) string {
 	caller := getCallerFunc(skip)
-	call_site := caller.name + ":" + strconv.Itoa(caller.line)
-	return call_site
+	callSite := caller.name + ":" + strconv.Itoa(caller.line)
+	return callSite
 }
 
 func getLogFunc(pc uintptr) logFunc {
-	func_details := runtime.FuncForPC(pc)
-	if func_details == nil {
+	funcDetails := runtime.FuncForPC(pc)
+	if funcDetails == nil {
 		return invalidLogFunc(0)
 	}
 
-	file_name, line_num := func_details.FileLine(pc)
+	fileName, lineNum := funcDetails.FileLine(pc)
 
-	return logFunc{pc, func_details.Name() + "()", file_name, line_num}
+	return logFunc{pc, funcDetails.Name() + "()", fileName, lineNum}
 }
 
 func getCallerFunctions() []logFunc {
 
-	pc_slice := make([]uintptr, STACK_MAXLEN)
-	num_pc := runtime.Callers(2, pc_slice)
+	pcSlice := make([]uintptr, _StackMaxlen)
+	numPc := runtime.Callers(2, pcSlice)
 
-	pc_slice = pc_slice[:num_pc]
+	pcSlice = pcSlice[:numPc]
 
-	funcs := make([]logFunc, num_pc)
+	funcs := make([]logFunc, numPc)
 
-	for i, pc := range pc_slice {
+	for i, pc := range pcSlice {
 		funcs[i] = getLogFunc(pc)
 	}
 
 	return funcs
 }
 
+// PrintStackToStdErr will print the current stack to stderr
 func PrintStackToStdErr() {
 	runtime_debug.PrintStack()
 }

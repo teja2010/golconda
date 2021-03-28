@@ -2,12 +2,13 @@ package golconda
 
 import (
 	"fmt"
-	"time"
-	"strings"
-	"strconv"
 	"io/ioutil"
-	ui "github.com/teja2010/golconda/src/ui"
+	"strconv"
+	"strings"
+	"time"
+
 	d "github.com/teja2010/golconda/src/debug"
+	ui "github.com/teja2010/golconda/src/ui"
 )
 
 // /proc/meminfo
@@ -17,38 +18,40 @@ const (
 	_HEADER_MEMINFO = "Memory Info:"
 )
 
+// MemInfoConfig to read mem info
 type MemInfoConfig struct {
 	UpdateInterval string
 }
 
-func Meminfo(c chan<- ui.PrintData) {
+// MemInfo reg. func to read mem info
+func MemInfo(c chan<- ui.PrintData) {
 
 	for {
 		conf := GetConfig()
 
-		update_interval := confMemUpdateInterval(conf)
-		duration, err := time.ParseDuration(update_interval)
+		updateInterval := confMemUpdateInterval(conf)
+		duration, err := time.ParseDuration(updateInterval)
 		if err != nil {
-			d.Bug("Invalid Duration:", update_interval)
-			duration = 1*time.Second
+			d.Bug("Invalid Duration:", updateInterval)
+			duration = 1 * time.Second
 			// TODO read this value from the default config
 		}
 		time.Sleep(duration)
 
-		__meminfo(c)
+		_memInfo(c)
 	}
 }
 
 func confMemUpdateInterval(conf *GolcondaConfig) string {
-	update_interval := conf.MemInfo.UpdateInterval
-	if update_interval == "" {
-		update_interval = conf.Global.UpdateInterval
+	updateInterval := conf.MemInfo.UpdateInterval
+	if updateInterval == "" {
+		updateInterval = conf.Global.UpdateInterval
 	}
 
-	return update_interval
+	return updateInterval
 }
 
-func __meminfo(c chan<- ui.PrintData) {
+func _memInfo(c chan<- ui.PrintData) {
 	_contents, err := ioutil.ReadFile(_PROC_MEMINFO)
 	if err != nil {
 		d.Error("Unable to read", _PROC_MEMINFO)
@@ -59,7 +62,7 @@ func __meminfo(c chan<- ui.PrintData) {
 	lines := strings.Split(contents, _NEWLINE)
 
 	getMVal := func(prefix string) int64 {
-		s3:= FindLine(lines, Regex2Func("^" + prefix))
+		s3 := FindLine(lines, Regex2Func("^"+prefix))
 		s2 := strings.TrimPrefix(s3, prefix)
 		s1 := strings.TrimSuffix(s2, " kB")
 		s := strings.TrimSpace(s1)
@@ -71,67 +74,64 @@ func __meminfo(c chan<- ui.PrintData) {
 		return i64
 	}
 
-	total_mem  := getMVal("MemTotal:")
-	free_mem   := getMVal("MemFree:")
-	avail_mem  := getMVal("MemAvailable:")
-	used_mem   := total_mem - avail_mem
-	cache_mem  := getMVal("Cached:")
-	shared_mem := getMVal("Shmem:")
+	totalMem := getMVal("MemTotal:")
+	freeMem := getMVal("MemFree:")
+	availMem := getMVal("MemAvailable:")
+	usedMem := totalMem - availMem
+	cacheMem := getMVal("Cached:")
+	sharedMem := getMVal("Shmem:")
 
-	active_mem   := getMVal("Active:")
-	//inactive_mem := getMVal("Inactive:")
+	activeMem := getMVal("Active:")
+	//inactiveMem := getMVal("Inactive:")
 
-	total_swap := getMVal("SwapTotal:")
-	free_swap  := getMVal("SwapFree:")
-	used_swap  := total_swap - free_swap
+	totalSwap := getMVal("SwapTotal:")
+	freeSwap := getMVal("SwapFree:")
+	usedSwap := totalSwap - freeSwap
 
-
-	fmt_memstr := fmt.Sprintf(
-		"Memory Total %s | Free %s | Available %s | Cache %s | " +
-		"Shared %s | Used %s (Active %6.2f%%)" ,
-		humanizeMem(total_mem),
-		humanizeMem(free_mem),
-		humanizeMem(avail_mem),
-		humanizeMem(cache_mem),
-		humanizeMem(shared_mem),
-		humanizeMem(used_mem),
-		(100.0*float32(active_mem)/float32(used_mem)),
+	fmtMemstr := fmt.Sprintf(
+		"Memory Total %s | Free %s | Available %s | Cache %s | "+
+			"Shared %s | Used %s (Active %6.2f%%)",
+		humanizeMem(totalMem),
+		humanizeMem(freeMem),
+		humanizeMem(availMem),
+		humanizeMem(cacheMem),
+		humanizeMem(sharedMem),
+		humanizeMem(usedMem),
+		(100.0 * float32(activeMem) / float32(usedMem)),
 	)
 
-	fmt_swpstr := fmt.Sprintf(
+	fmtSwpstr := fmt.Sprintf(
 		"Swap   Total %s | Used %s | Free %s",
-		humanizeMem(total_swap),
-		humanizeMem(used_swap),
-		humanizeMem(free_swap),
+		humanizeMem(totalSwap),
+		humanizeMem(usedSwap),
+		humanizeMem(freeSwap),
 	)
 
 	pdata := ui.PrintData{
-			ui.Tuple{0, 0},
-			ui.Tuple{1, 100},
-			[]string{_HEADER_MEMINFO, fmt_memstr, fmt_swpstr},
-		}
-	
+		ui.Tuple{0, 0},
+		ui.Tuple{1, 100},
+		[]string{_HEADER_MEMINFO, fmtMemstr, fmtSwpstr},
+	}
+
 	c <- pdata
 }
 
-
-func humanizeMem(mem_kb int64) string {
+func humanizeMem(memKb int64) string {
 	const KILO int64 = 1000
-	float_div := func(a, b int64) string {
-		f := float32(a)/float32(b)
+	floatDiv := func(a, b int64) string {
+		f := float32(a) / float32(b)
 		return fmt.Sprintf("%6.2f", f)
 	}
 
-	if mem_kb < KILO {
-		return float_div(mem_kb, 1) + " kB"
-	} else if  mem_kb < KILO * KILO {
-		return float_div(mem_kb, KILO) + " MB"
-	} else if mem_kb < KILO * KILO * KILO {
-		return float_div(mem_kb, KILO * KILO) + " GB"
-	} else if mem_kb < KILO * KILO * KILO * KILO {
-		return float_div(mem_kb, KILO * KILO * KILO) + " TB"
+	if memKb < KILO {
+		return floatDiv(memKb, 1) + " kB"
+	} else if memKb < KILO*KILO {
+		return floatDiv(memKb, KILO) + " MB"
+	} else if memKb < KILO*KILO*KILO {
+		return floatDiv(memKb, KILO*KILO) + " GB"
+	} else if memKb < KILO*KILO*KILO*KILO {
+		return floatDiv(memKb, KILO*KILO*KILO) + " TB"
 	} else {
-		return float_div(mem_kb, KILO^4) + " PB"
+		return floatDiv(memKb, KILO^4) + " PB"
 	}
 }
-

@@ -1,0 +1,6 @@
+- add basic ui, which prints to stdout. see https://stackoverflow.com/questions/37774983/clearing-the-screen-by-printing-a-character#37778152
+- add per process cpu, swap usage indicators
+- add Notify() in UI
+- add colors to UI
+- network data rates
+- open netw sockets, per process net usage (bpf ?)

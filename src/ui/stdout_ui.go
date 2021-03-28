@@ -2,47 +2,52 @@ package ui
 
 import (
 	"fmt"
-	"time"
 	"strings"
+	"time"
+
 	d "github.com/teja2010/golconda/src/debug"
 )
 
-// print everything out to stdout
+// Simply print everything out to stdout
 
+//StdoutUI is an empty struct to satisfy the UI interface
 type StdoutUI struct {
-	last_update time.Time
-	size Tuple
-	content []string
 }
 
-func (s StdoutUI) String() string {
+// stdoutUIData data to print out to stdout
+type stdoutUIData struct {
+	lastUpdate time.Time
+	size       Tuple
+	content    []string
+}
+
+func (s stdoutUIData) String() string {
 	return fmt.Sprintf("Time: %s\n%s",
-			   time.Now().Format(time.Stamp),
-			   format_content(s.size.Fst, s.size.Snd, s.content),
-			)
+		time.Now().Format(time.Stamp),
+		s.formatContent(),
+	)
 
 }
 
+// New create a new UI
 func (s StdoutUI) New() UI {
 	// nothing to Init
 	d.DebugLog("Inited StdoutUI")
 
-	return StdoutUI{time.Now(),
-			Tuple{1, 100},
-			[]string{"Waiting for data..."} }
+	return s
 }
 
+// Update sends data to UI
 func (s StdoutUI) Update(pdata PrintData) {
-	// add pdata to s
+	sd := stdoutUIData{
+		lastUpdate: time.Now(),
+		size:       pdata.Size,
+		content:    pdata.Content,
+	}
 
-	s.last_update = time.Now()
-	s.size = pdata.Size
-	s.content = pdata.Content
-
-	fmt.Println(s)
+	fmt.Println(sd)
 }
 
-func format_content(sizeX int, sizeY int, content []string) string {
-	// format  the content so it fits into these dimensions
-	return strings.Join(content, "\n")
+func (s stdoutUIData) formatContent() string {
+	return strings.Join(s.content, "\n")
 }

@@ -2,142 +2,143 @@ package golconda
 
 import (
 	"fmt"
-	"time"
-	"strings"
-	"strconv"
 	"io/ioutil"
-	ui "github.com/teja2010/golconda/src/ui"
+	"strconv"
+	"strings"
+	"time"
+
 	d "github.com/teja2010/golconda/src/debug"
+	ui "github.com/teja2010/golconda/src/ui"
 )
 
 const (
 	_PROC_STAT = "/proc/stat"
 
-	// regexps
 	_HEADER_CPU_USAGE = "CPU USAGE:"
 )
 
-type CpuUsageConfig struct {
+// CPUUsageConfig config for cpu usage
+type CPUUsageConfig struct {
 	UpdateInterval string
 }
 
-// read values from /proc/stat
-func CPU_Usage(c chan<- ui.PrintData) {
+// CPUUsage reads values from /proc/stat to display cpu stats
+func CPUUsage(c chan<- ui.PrintData) {
 
-	old_data := read_proc_stat()
+	oldData := readProcStat()
 
 	for {
 		conf := GetConfig()
 
-		update_interval := confCpuUpdateInterval(conf)
-		duration, err := time.ParseDuration(update_interval)
+		updateInterval := confCPUUpdateInterval(conf)
+		duration, err := time.ParseDuration(updateInterval)
 		if err != nil {
-			d.Error("Invalid Duration:", update_interval)
-			duration = 1*time.Second
+			d.Error("Invalid Duration:", updateInterval)
+			duration = 1 * time.Second
 			//TODO read this value from the default config
 		}
 		time.Sleep(duration)
 
-		old_data = __cpu_usage(c, old_data)
+		oldData = _CPUUsage(c, oldData)
 	}
 
 }
 
-func confCpuUpdateInterval(conf *GolcondaConfig) string {
-	update_interval := conf.CpuUsage.UpdateInterval
-	if update_interval == "" {
-		update_interval = conf.Global.UpdateInterval
+func confCPUUpdateInterval(conf *GolcondaConfig) string {
+	updateInterval := conf.CpuUsage.UpdateInterval
+	if updateInterval == "" {
+		updateInterval = conf.Global.UpdateInterval
 	}
 
-	return update_interval
+	return updateInterval
 }
 
-func __cpu_usage(c chan<- ui.PrintData, old_data []cpu_stat_data) []cpu_stat_data {
+func _CPUUsage(c chan<- ui.PrintData, oldData []cpuStatData) []cpuStatData {
 
-	new_data := read_proc_stat()
+	newData := readProcStat()
 
 	pdata := ui.PrintData{
-				ui.Tuple{0, 0},
-				ui.Tuple{1, 100},
-				[]string{_HEADER_CPU_USAGE},
-			}
+		Position: ui.Tuple{Fst: 0, Snd: 0},
+		Size:     ui.Tuple{Fst: 1, Snd: 100},
+		Content:  []string{_HEADER_CPU_USAGE},
+	}
 
-	for i := 0; i < len(old_data); i++ {
-		fmt_usage_data := fmt_cpu_usage(new_data[i], old_data[i])
-		pdata.Content = append(pdata.Content, fmt_usage_data)
+	for i := 0; i < len(oldData); i++ {
+		fmtUsageData := fmtCPUUsage(newData[i], oldData[i])
+		pdata.Content = append(pdata.Content, fmtUsageData)
 	}
 
 	// finally push into the channel
 	c <- pdata
 
 	d.DebugLog(pdata.Content[:3])
-	return new_data
+	return newData
 }
 
-func fmt_cpu_usage(new_data, old_data cpu_stat_data) string {
+func fmtCPUUsage(newData, oldData cpuStatData) string {
 
-	diff := cpu_stat_data{
-		new_data.title,
-		new_data.user - old_data.user,
-		new_data.kern - old_data.kern,
-		new_data.idle - old_data.idle,
-		new_data.irq - old_data.irq,
-		new_data.guest - old_data.guest,
+	diff := cpuStatData{
+		newData.title,
+		newData.user - oldData.user,
+		newData.kern - oldData.kern,
+		newData.idle - oldData.idle,
+		newData.irq - oldData.irq,
+		newData.guest - oldData.guest,
 	}
 
 	sum := diff.user + diff.kern + diff.idle + diff.irq + diff.guest
 
-	float_div := func(a, b int64) float32 {
-		return 100.0*float32(a)/float32(b)
+	floatDiv := func(a, b int64) float32 {
+		return 100.0 * float32(a) / float32(b)
 	}
 
-	fmt_string := fmt.Sprintf("%s  User %6.02f%% | Kern %6.02f%% | " +
-				  "Idle %6.02f%% | Irq %6.02f%% | " +
-				  "Guest %6.02f%%",
-				strings.ToUpper(diff.title),
-				float_div(diff.user, sum),
-				float_div(diff.kern, sum),
-				float_div(diff.idle, sum),
-				float_div(diff.irq, sum),
-				float_div(diff.guest, sum),
-			)
+	fmtString := fmt.Sprintf("%s  User %6.02f%% | Kern %6.02f%% | "+
+		"Idle %6.02f%% | Irq %6.02f%% | "+
+		"Guest %6.02f%%",
+		strings.ToUpper(diff.title),
+		floatDiv(diff.user, sum),
+		floatDiv(diff.kern, sum),
+		floatDiv(diff.idle, sum),
+		floatDiv(diff.irq, sum),
+		floatDiv(diff.guest, sum),
+	)
 
-	return fmt_string
+	return fmtString
 }
 
-type cpu_stat_data struct {
+type cpuStatData struct {
 	title string
-	user int64
-	kern int64
-	idle int64
-	irq int64
+	user  int64
+	kern  int64
+	idle  int64
+	irq   int64
 	guest int64
 }
 
-func read_proc_stat() []cpu_stat_data {
+func readProcStat() []cpuStatData {
 	_contents, err := ioutil.ReadFile(_PROC_STAT)
 	if err != nil {
 		d.Error("Unable to read", _PROC_STAT)
-		return []cpu_stat_data{}
+		return []cpuStatData{}
 	}
 
 	contents := string(_contents)
 	lines := strings.Split(contents, _NEWLINE)
 
-	cpu_lines := TakeWhile(lines, Regex2Func("^cpu"))
+	cpuLines := TakeWhile(lines, Regex2Func("^cpu"))
 
-	usage_data := FmapSCpu_stat(cpu_lines, read_usage_line)
+	usageData := FmapSCpuStat(cpuLines, readUsageLine)
 
-	return usage_data
+	return usageData
 }
 
-func read_usage_line(line string) cpu_stat_data {
+func readUsageLine(line string) cpuStatData {
 	_words := strings.Split(line, " ")
 
-	not_empty := func (l string) bool { return l != "" }
-	words := Filter(_words, not_empty)
+	notEmpty := func(l string) bool { return l != "" }
+	words := Filter(_words, notEmpty)
 
-	if d.DebugCheck(len(words) != 11) {
+	if d.Unlikely(len(words) != 11) {
 		d.Bug("We must have 11 words")
 	}
 
@@ -148,25 +149,26 @@ func read_usage_line(line string) cpu_stat_data {
 
 	convert2int := func(w string) int64 {
 		i64, err := strconv.ParseInt(w, 10, 64)
-		if err != nil { d.Bug("ParseInt failed") }
+		if err != nil {
+			d.Bug("ParseInt failed")
+		}
 		return i64
 	}
-	usage_ints := FmapSI64(words[1:], convert2int)
-	user_usage := usage_ints[0] + usage_ints[1]
-	kern_usage := usage_ints[2]
-	idle_usage := usage_ints[3]
+	usageInts := FmapSI64(words[1:], convert2int)
+	userUsage := usageInts[0] + usageInts[1]
+	kernUsage := usageInts[2]
+	idleUsage := usageInts[3]
 	// 4 is IO wait
-	irq_usage := usage_ints[5] + usage_ints[6] //hardirq + softirq
+	irqUsage := usageInts[5] + usageInts[6] //hardirq + softirq
 	// 7 is steal
-	guest_usage := usage_ints[8] + usage_ints[9]
+	guestUsage := usageInts[8] + usageInts[9]
 
-	return cpu_stat_data {
-		title:title,
-		user:user_usage,
-		kern:kern_usage,
-		idle:idle_usage,
-		irq:irq_usage,
-		guest:guest_usage,
+	return cpuStatData{
+		title: title,
+		user:  userUsage,
+		kern:  kernUsage,
+		idle:  idleUsage,
+		irq:   irqUsage,
+		guest: guestUsage,
 	}
 }
-

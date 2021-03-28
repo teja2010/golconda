@@ -1,18 +1,20 @@
 package debug
 
 import (
+	"fmt"
 	"os"
 )
 
 const (
-	DEBUG_LOGS = 0
-	INFO_LOGS = 1
-	WARNING_LOGS = 2
+	_DebugLogs   = 0
+	_InfoLogs    = 1
+	_WarningLogs = 2
 
-	LOG_LEVEL = DEBUG_LOGS
-
-	STACK_MAXLEN = 20
+	_StackMaxlen = 20
 )
+
+// TODO move to config file
+var _LogLevel = _DebugLogs
 
 var _logger loggerInterface
 
@@ -22,49 +24,55 @@ type loggerInterface interface {
 
 func header(log string) []interface{} {
 	caller := getCallerFunc(3)
-	call_str := caller.logPrefix()
+	callStr := caller.logPrefix()
 
-	header := []interface{}{"[" + log + call_str + "]"}
+	header := []interface{}{"[" + log + callStr + "]"}
 	return header
 }
 
-func DebugLog (v ...interface{}) {
-	if LOG_LEVEL > DEBUG_LOGS {
+// DebugLog is only for debugging
+func DebugLog(v ...interface{}) {
+	if _LogLevel > _DebugLogs {
 		return
 	}
 
 	v = append(header("DEBUG: "), v...)
 
-	_logger.Println(v ...)
+	_logger.Println(v...)
 }
 
+//Log is to inform about general event
 func Log(v ...interface{}) {
-	if LOG_LEVEL > INFO_LOGS {
+	if _LogLevel > _InfoLogs {
 		return
 	}
 
 	v = append(header("INFO: "), v...)
 
-	_logger.Println(v ...)
+	_logger.Println(v...)
 }
 
+// Error is for errors
 func Error(v ...interface{}) {
 	v = append(header("ERROR: "), v...)
-	_logger.Println(v ...)
+	_logger.Println(v...)
 }
 
+// Warning is about unusal events
 func Warning(v ...interface{}) {
 	v = append(header("WARNING: "), v...)
-	_logger.Println(v ...)
+	_logger.Println(v...)
 }
 
+// Bug is to log and crash
 func Bug(v ...interface{}) {
+	fmt.Fprintln(os.Stderr, v...)
 	PrintStackToStdErr()
 
 	caller := getCallerFunc(1)
 	header := []interface{}{"BUG: ", caller}
 	v = append(header, v...)
-	_logger.Println(v ...)
+	_logger.Println(v...)
 
 	_logger.Println("Stack:")
 	callers := getCallerFunctions()
@@ -75,6 +83,7 @@ func Bug(v ...interface{}) {
 	os.Exit(-1)
 }
 
+// InitLogging inits logging
 func InitLogging() {
-	_logger = DefLogInit()
+	_logger = defLogInit()
 }

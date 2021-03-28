@@ -2,3 +2,4 @@ golconda
 .*.swp
 tags
 TAGS
+cscope.*

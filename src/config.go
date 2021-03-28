@@ -1,46 +1,53 @@
 package golconda
 
 import (
-	"os"
+	_ "embed" // embed the default json
 	"fmt"
-	"time"
+	"os"
 	"sync"
-	_ "embed"
+	"time"
+
 	d "github.com/teja2010/golconda/src/debug"
-	"github.com/teja2010/golconda/src/ui"
 	"github.com/teja2010/golconda/src/jsonc"
+	"github.com/teja2010/golconda/src/ui"
 )
 
 type GlobalConfig struct {
 	UpdateInterval string
 }
 type GolcondaConfig struct {
-	Global GlobalConfig
-	CpuUsage CpuUsageConfig
-	MemInfo MemInfoConfig
+	Global   GlobalConfig
+	CpuUsage CPUUsageConfig
+	MemInfo  MemInfoConfig
 }
 
+// RegisteredFunction is the type which registered functions must support
 type RegisteredFunction func(chan<- ui.PrintData)
+
+// RegisteredFunctions returns functions which are registered
 func RegisteredFunctions() []RegisteredFunction {
 	return []RegisteredFunction{
-			CPU_Usage,
-			Meminfo,
-		}
+		CPUUsage,
+		MemInfo,
+	}
 }
 
 // add specific functions above.
 
-var _default_config *GolcondaConfig
+var _defaultConfig *GolcondaConfig
 var _config *GolcondaConfig
 var rwlock sync.RWMutex
-var config_file string = ""
-var _search_config_files = []string{"~/.golcondarc"}
+var configFile string = ""
+var _searchConfigFiles = []string{"~/.golcondarc"}
 
-// return config
+// GetConfig returns a pointer to the config
 func GetConfig() *GolcondaConfig {
+	rwlock.RLock()
+	defer rwlock.RUnlock()
 	return _config
 }
 
+// ConfigInit initializes config
 func ConfigInit() {
 	rwlock = sync.RWMutex{}
 	readArgs()
@@ -53,23 +60,24 @@ func ConfigInit() {
 func updateConfigThread() {
 	// if file has changed update the config pointer
 	for {
-		time.Sleep(1*time.Second)
+		time.Sleep(1 * time.Second)
 		readConfig()
 	}
 }
 
 //go:embed embeded_files/default_config.json
-var _def_config_data []byte
+var _defConfigData []byte
+
 // read Default config only once.
 func readDefaultConfig() {
-	_default_config := new(GolcondaConfig)
-	err := jsonc.Unmarshal(_def_config_data, _default_config)
+	_defaultConfig := new(GolcondaConfig)
+	err := jsonc.Unmarshal(_defConfigData, _defaultConfig)
 	if err != nil {
 		// should never fail
 		d.Bug("Default config unmarshall failed", err)
 	}
 
-	d.DebugLog(fmt.Sprintf("%+v", _default_config))
+	d.DebugLog(fmt.Sprintf("%+v", _defaultConfig))
 }
 
 // the only writer
@@ -91,17 +99,17 @@ func readConfig() {
 func readArgs() {
 	args := os.Args[:]
 
-	for i := 0 ; i < len(args) ; i++ {
+	for i := 0; i < len(args); i++ {
 		if args[i] == "-h" || args[i] == "--help" {
 			printHelp()
 		} else if args[i] == "-f" {
 			if i+1 > len(args) {
-				fmt.Fprintf(os.Stderr, "File name missing\n" +
-						"Run golconda -h for help")
+				fmt.Fprintf(os.Stderr, "File name missing\n"+
+					"Run golconda -h for help")
 				os.Exit(-1)
 			}
-			config_file = args[i+1]
-			d.DebugLog("Set config file", config_file)
+			configFile = args[i+1]
+			d.DebugLog("Set config file", configFile)
 			i++
 		} else if args[i] == "-d" {
 			printDefaultConfig()
@@ -113,7 +121,7 @@ func printHelp() {
 	defer os.Exit(0)
 
 	fmt.Println("" +
-`Golconda 0.0.1
+		`Golconda 0.0.1
 
 USAGE:
   -f, --follow-config-file FILE_PATH
@@ -128,5 +136,5 @@ USAGE:
 
 func printDefaultConfig() {
 	defer os.Exit(0)
-	fmt.Println(string(_def_config_data))
+	fmt.Println(string(_defConfigData))
 }

@@ -1,42 +1,38 @@
 package debug
 
 import (
-	"bufio"
 	"log"
 	"os"
 )
 
 const (
-	_GOLCONDA_LOG_FILE = "/tmp/golconda.log"
-	_LOG_FLAGS         = (log.Ltime | log.Lmicroseconds |
-			      log.Lmsgprefix)
+	_GolcondaLogFile = "/tmp/golconda.log"
+	_LogFlags        = (log.Ltime | log.Lmicroseconds | log.Lmsgprefix)
 )
 
-type def_log struct {
-	_writer *bufio.Writer
+type defLogData struct {
 	_logger *log.Logger
 }
 
-func DefLogInit() def_log {
-	d := def_log{nil, nil}
+// DefLogInit inits logs
+func defLogInit() defLogData {
+	d := defLogData{nil}
 
 	// Nothing
-	file, err := os.OpenFile(_GOLCONDA_LOG_FILE,
-				 os.O_APPEND|os.O_WRONLY|os.O_CREATE,
-				 0644)
+	file, err := os.OpenFile(_GolcondaLogFile,
+		os.O_APPEND|os.O_WRONLY|os.O_CREATE,
+		0644)
 
 	if err != nil {
 		Bug("Error Unable to open temp file", err)
 	}
 
-	//d._writer = bufio.NewWriter(file)
-
-	d._logger = log.New(file, "", _LOG_FLAGS)
+	d._logger = log.New(file, "", _LogFlags)
 
 	return d
 }
 
-func (d def_log) Println(v ...interface{}) {
+func (d defLogData) Println(v ...interface{}) {
 
 	d._logger.Println(v...)
 }
