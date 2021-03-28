@@ -7,6 +7,8 @@ import (
 	d "github.com/teja2010/golconda/src/debug"
 )
 
+// print everything out to stdout
+
 type StdoutUI struct {
 	last_update time.Time
 	size Tuple

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	runtime_debug "runtime/debug"
 )
 
@@ -17,6 +18,23 @@ type logFunc struct {
 func (f logFunc) String() string {
 	str := fmt.Sprintf("%x %s %s:%d", f.pc, f.name,
 			f.file_name, f.line);
+	return str
+}
+func removePathPrefix (name string, seperator string) string {
+	last_idx := strings.LastIndex(name, seperator)
+	if last_idx > 0 {
+		name = name[last_idx+1:]
+	}
+
+	return name
+}
+
+
+func (f logFunc) logPrefix() string {
+	str := fmt.Sprintf("%s %s:%d",
+			   removePathPrefix(f.name, `/`),
+			   removePathPrefix(f.file_name, `/`),
+			   f.line);
 	return str
 }
 

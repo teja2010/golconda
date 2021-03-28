@@ -6,7 +6,6 @@ import (
 	"strings"
 	"strconv"
 	"io/ioutil"
-	conf "github.com/teja2010/golconda/src/config"
 	ui "github.com/teja2010/golconda/src/ui"
 	d "github.com/teja2010/golconda/src/debug"
 )
@@ -18,22 +17,39 @@ const (
 	_HEADER_CPU_USAGE = "CPU USAGE:"
 )
 
+type CpuUsageConfig struct {
+	UpdateInterval string
+}
+
 // read values from /proc/stat
 func CPU_Usage(c chan<- ui.PrintData) {
 
 	old_data := read_proc_stat()
 
 	for {
-		update_interval := conf.GetStr("update_interval")
+		conf := GetConfig()
+
+		update_interval := confCpuUpdateInterval(conf)
 		duration, err := time.ParseDuration(update_interval)
 		if err != nil {
-			d.Bug("Invalid Duration:", update_interval)
+			d.Error("Invalid Duration:", update_interval)
+			duration = 1*time.Second
+			//TODO read this value from the default config
 		}
 		time.Sleep(duration)
 
 		old_data = __cpu_usage(c, old_data)
 	}
 
+}
+
+func confCpuUpdateInterval(conf *GolcondaConfig) string {
+	update_interval := conf.CpuUsage.UpdateInterval
+	if update_interval == "" {
+		update_interval = conf.Global.UpdateInterval
+	}
+
+	return update_interval
 }
 
 func __cpu_usage(c chan<- ui.PrintData, old_data []cpu_stat_data) []cpu_stat_data {

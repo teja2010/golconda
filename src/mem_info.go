@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	ui "github.com/teja2010/golconda/src/ui"
 	d "github.com/teja2010/golconda/src/debug"
-	conf "github.com/teja2010/golconda/src/config"
 )
 
 // /proc/meminfo
@@ -18,18 +17,35 @@ const (
 	_HEADER_MEMINFO = "Memory Info:"
 )
 
+type MemInfoConfig struct {
+	UpdateInterval string
+}
+
 func Meminfo(c chan<- ui.PrintData) {
 
 	for {
-		update_interval := conf.GetStr("update_interval")
+		conf := GetConfig()
+
+		update_interval := confMemUpdateInterval(conf)
 		duration, err := time.ParseDuration(update_interval)
 		if err != nil {
 			d.Bug("Invalid Duration:", update_interval)
+			duration = 1*time.Second
+			// TODO read this value from the default config
 		}
 		time.Sleep(duration)
 
 		__meminfo(c)
 	}
+}
+
+func confMemUpdateInterval(conf *GolcondaConfig) string {
+	update_interval := conf.MemInfo.UpdateInterval
+	if update_interval == "" {
+		update_interval = conf.Global.UpdateInterval
+	}
+
+	return update_interval
 }
 
 func __meminfo(c chan<- ui.PrintData) {

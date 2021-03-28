@@ -20,13 +20,20 @@ type loggerInterface interface {
 	Println(v ...interface{})
 }
 
+func header(log string) []interface{} {
+	caller := getCallerFunc(3)
+	call_str := caller.logPrefix()
+
+	header := []interface{}{"[" + log + call_str + "]"}
+	return header
+}
+
 func DebugLog (v ...interface{}) {
 	if LOG_LEVEL > DEBUG_LOGS {
 		return
 	}
 
-	header := []interface{}{"DEBUG:"}
-	v = append(header, v...)
+	v = append(header("DEBUG: "), v...)
 
 	_logger.Println(v ...)
 }
@@ -36,20 +43,18 @@ func Log(v ...interface{}) {
 		return
 	}
 
+	v = append(header("INFO: "), v...)
+
 	_logger.Println(v ...)
 }
 
 func Error(v ...interface{}) {
-	header := []interface{}{"ERROR:"}
-	v = append(header, v...)
+	v = append(header("ERROR: "), v...)
 	_logger.Println(v ...)
 }
 
 func Warning(v ...interface{}) {
-	call_site := getCallSite(3)
-	header := []interface{}{"WARNING: ", call_site}
-
-	v = append(header, v...)
+	v = append(header("WARNING: "), v...)
 	_logger.Println(v ...)
 }
 

@@ -1,0 +1,16 @@
+{
+	"global" : { // overall settings
+		"updateInterval" : "1s"
+		/* updateInterval : default rate at which the values need to
+		 * be polled. Only used in case the per command value is
+		 * incorrect or unfilled */
+	},
+
+	"cpuUsage" : { // Configure CPU usage information
+		"updateInterval" : "1s"
+	},
+
+	"memInfo" : { // Configure Mem Information
+		"updateInterval" : "1s"
+	}
+}

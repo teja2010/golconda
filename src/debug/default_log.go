@@ -9,7 +9,7 @@ import (
 const (
 	_GOLCONDA_LOG_FILE = "/tmp/golconda.log"
 	_LOG_FLAGS         = (log.Ltime | log.Lmicroseconds |
-			      log.Lshortfile | log.Lmsgprefix)
+			      log.Lmsgprefix)
 )
 
 type def_log struct {
@@ -31,11 +31,12 @@ func DefLogInit() def_log {
 
 	//d._writer = bufio.NewWriter(file)
 
-	d._logger = log.New(file, " | ", _LOG_FLAGS)
+	d._logger = log.New(file, "", _LOG_FLAGS)
 
 	return d
 }
 
 func (d def_log) Println(v ...interface{}) {
+
 	d._logger.Println(v...)
 }
