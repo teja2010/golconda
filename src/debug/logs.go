@@ -69,7 +69,7 @@ func Bug(v ...interface{}) {
 	fmt.Fprintln(os.Stderr, v...)
 	PrintStackToStdErr()
 
-	caller := getCallerFunc(1)
+	caller := getCallerFunc(2)
 	header := []interface{}{"BUG: ", caller}
 	v = append(header, v...)
 	_logger.Println(v...)
@@ -86,4 +86,8 @@ func Bug(v ...interface{}) {
 // InitLogging inits logging
 func InitLogging() {
 	_logger = defLogInit()
+}
+
+func ToString(v interface{}) string {
+	return fmt.Sprintf("%+v", v)
 }

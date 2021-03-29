@@ -3,12 +3,14 @@ package golconda
 import (
 	_ "embed" // embed the default json
 	"fmt"
+	"io/ioutil"
 	"os"
 	"sync"
 	"time"
 
 	d "github.com/teja2010/golconda/src/debug"
 	"github.com/teja2010/golconda/src/jsonc"
+	"github.com/teja2010/golconda/src/meta"
 	"github.com/teja2010/golconda/src/ui"
 )
 
@@ -34,10 +36,9 @@ func RegisteredFunctions() []RegisteredFunction {
 
 // add specific functions above.
 
-var _defaultConfig *GolcondaConfig
+var _defaultConfig GolcondaConfig
 var _config *GolcondaConfig
 var rwlock sync.RWMutex
-var configFile string = ""
 var _searchConfigFiles = []string{"~/.golcondarc"}
 
 // GetConfig returns a pointer to the config
@@ -52,16 +53,30 @@ func ConfigInit() {
 	rwlock = sync.RWMutex{}
 	readArgs()
 	readDefaultConfig()
-	readConfig()
 
-	go updateConfigThread()
+	configIsReady := make(chan bool)
+
+	go updateConfigThread(configIsReady)
+
+	<-configIsReady // wait for it to be read atleast once
 }
 
-func updateConfigThread() {
+func updateConfigThread(configIsReady chan bool) {
 	// if file has changed update the config pointer
+	var lastRead time.Time
+	var once sync.Once
 	for {
-		time.Sleep(1 * time.Second)
-		readConfig()
+		data, file := findConfData()
+		readConfig(data)
+		once.Do(func() { configIsReady <- true })
+
+		if file == "" { // the file in args is still not readable...
+			time.Sleep(time.Second)
+			continue
+		}
+
+		lastRead = time.Now()
+		waitForChange(file, lastRead)
 	}
 }
 
@@ -70,26 +85,65 @@ var _defConfigData []byte
 
 // read Default config only once.
 func readDefaultConfig() {
-	_defaultConfig := new(GolcondaConfig)
-	err := jsonc.Unmarshal(_defConfigData, _defaultConfig)
+	err := jsonc.Unmarshal(_defConfigData, &_defaultConfig)
 	if err != nil {
 		// should never fail
 		d.Bug("Default config unmarshall failed", err)
 	}
 
-	d.DebugLog(fmt.Sprintf("%+v", _defaultConfig))
+	d.DebugLog("Read default Config", d.ToString(_defaultConfig))
 }
 
 // the only writer
-func readConfig() {
-	conf := new(GolcondaConfig)
-
-	conf.CpuUsage.UpdateInterval = "3s"
-	conf.MemInfo.UpdateInterval = "1s"
-
+func readConfig(data []byte) {
 	rwlock.Lock()
-	_config = conf
-	rwlock.Unlock()
+	defer rwlock.Unlock()
+	_config = new(GolcondaConfig)
+
+	err := jsonc.Unmarshal(data, _config)
+	if err != nil {
+		d.Error("Unmarshall config data failed", err)
+		return
+	}
+	d.DebugLog("Read Config", d.ToString(_config))
+
+	err = meta.LeftMerge(&_defaultConfig, _config, &GolcondaConfig{})
+	if err != nil {
+		d.Error("LeftMerge failed", err)
+		//return
+	}
+
+	d.DebugLog("Read Config", d.ToString(_config))
+}
+
+func findConfData() ([]byte, string) {
+	for _, cfile := range _searchConfigFiles {
+		data, err := ioutil.ReadFile(cfile)
+		if err == nil {
+			d.Log("Read data from", cfile)
+			return data, cfile
+		}
+		d.Error("findConfData", cfile, "failed", err)
+	}
+
+	// return an empty conf data
+	return []byte("{}"), ""
+}
+
+func waitForChange(cfile string, lastRead time.Time) {
+	for {
+		time.Sleep(1 * time.Second)
+
+		info, err := os.Stat(cfile)
+		if err != nil {
+			d.Error("Stat failed", err)
+			return
+		}
+
+		if info.ModTime().After(lastRead) {
+			break
+		}
+	}
 }
 
 // only these arguments supported.
@@ -108,8 +162,8 @@ func readArgs() {
 					"Run golconda -h for help")
 				os.Exit(-1)
 			}
-			configFile = args[i+1]
-			d.DebugLog("Set config file", configFile)
+			_searchConfigFiles = []string{args[i+1]}
+			d.DebugLog("Set config file", _searchConfigFiles)
 			i++
 		} else if args[i] == "-d" {
 			printDefaultConfig()
