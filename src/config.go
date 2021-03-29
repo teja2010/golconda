@@ -16,9 +16,12 @@ import (
 
 type GlobalConfig struct {
 	UpdateInterval string
+	DebugLevel     int
+	UI             string
 }
 type GolcondaConfig struct {
 	Global   GlobalConfig
+	UI       ui.UIConfig
 	CpuUsage CPUUsageConfig
 	MemInfo  MemInfoConfig
 }

@@ -7,6 +7,7 @@ import (
 
 // Start golconda
 func Start() {
+	d.InitLogging(func() int { return GetConfig().Global.DebugLevel })
 	ConfigInit()
 
 	printChan := make(chan ui.PrintData, 10)

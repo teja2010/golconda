@@ -3,6 +3,7 @@ package debug
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 const (
@@ -84,8 +85,20 @@ func Bug(v ...interface{}) {
 }
 
 // InitLogging inits logging
-func InitLogging() {
+func InitLogging(updateLevel func() int) {
 	_logger = defLogInit()
+
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			_LogLevel = updateLevel()
+		}
+	}()
+
+}
+
+func SetLogLevel(lvl int) {
+	_LogLevel = lvl
 }
 
 func ToString(v interface{}) string {

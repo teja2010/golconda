@@ -20,6 +20,8 @@ const (
 // CPUUsageConfig config for cpu usage
 type CPUUsageConfig struct {
 	UpdateInterval string
+	UIPosition     ui.Tuple
+	UISize         ui.Tuple
 }
 
 // CPUUsage reads values from /proc/stat to display cpu stats
@@ -58,8 +60,8 @@ func _CPUUsage(c chan<- ui.PrintData, oldData []cpuStatData) []cpuStatData {
 	newData := readProcStat()
 
 	pdata := ui.PrintData{
-		Position: ui.Tuple{Fst: 0, Snd: 0},
-		Size:     ui.Tuple{Fst: 1, Snd: 100},
+		Position: ui.Tuple{X: 5, Y: 0},
+		Size:     ui.Tuple{X: 10, Y: 100},
 		Content:  []string{_HEADER_CPU_USAGE},
 	}
 

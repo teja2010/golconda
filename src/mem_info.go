@@ -21,6 +21,8 @@ const (
 // MemInfoConfig to read mem info
 type MemInfoConfig struct {
 	UpdateInterval string
+	UIPosition     ui.Tuple
+	UISize         ui.Tuple
 }
 
 // MemInfo reg. func to read mem info
@@ -108,9 +110,9 @@ func _memInfo(c chan<- ui.PrintData) {
 	)
 
 	pdata := ui.PrintData{
-		ui.Tuple{0, 0},
-		ui.Tuple{1, 100},
-		[]string{_HEADER_MEMINFO, fmtMemstr, fmtSwpstr},
+		Position: ui.Tuple{X: 0, Y: 0},
+		Size:     ui.Tuple{X: 2, Y: 100},
+		Content:  []string{_HEADER_MEMINFO, fmtMemstr, fmtSwpstr},
 	}
 
 	c <- pdata

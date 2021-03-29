@@ -1,16 +1,55 @@
 {
 	"global" : { // overall settings
-		"updateInterval" : "1s"
+
+		"updateInterval" : "1s",
 		/* updateInterval : default rate at which the values need to
 		 * be polled. Only used in case the per command value is
-		 * incorrect or unfilled */
+		 * incorrect or unfilled
+		 */
+
+		"debugLevel": 0
+		/* debugLevel : 0, 1 or 2
+		 *    0 : Debug logs, Info logs and Warning logs
+		 *    1 : Info logs and Warning logs
+		 *    2 : Warning logs
+		 */
+
 	},
 
+	"UI" : {
+		"UI" : "SimpleTerm",
+		// UI: "SimpleTerm" or "Stdout"
+
+		"simpleTerm" : {
+
+			// Size of the terminal
+			"Size": { "X" : 30, "Y": 80 }
+		}
+
+	},
+
+
 	"cpuUsage" : { // Configure CPU usage information
-		"updateInterval" : "1s"
+
+		"updateInterval" : "1s",
+		// rate at which CPU values need to be polled. If invalid, the
+		// global value is used
+
+		// position of the CPU data
+		"UIPosition" : { "X" : 5, "Y" : 0 },
+
+		// size of the CPU data
+		"UISize" : { "X" : 10, "Y" : 100 }
+
 	},
 
 	"memInfo" : { // Configure Mem Information
-		"updateInterval" : "1s"
+		"updateInterval" : "1s",
+
+		// position of the MemInfo
+		"UIPosition" : { "X" : 0, "Y" : 0 },
+
+		// size of the MemInfo
+		"UISize" : { "X" : 2, "Y" : 100 }
 	}
 }
