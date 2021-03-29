@@ -1,13 +1,14 @@
 package golconda
 
 import (
-	"fmt"
+	//"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
 
 	d "github.com/teja2010/golconda/src/debug"
+	"github.com/teja2010/golconda/src/meta"
 	ui "github.com/teja2010/golconda/src/ui"
 )
 
@@ -22,6 +23,7 @@ type CPUUsageConfig struct {
 	UpdateInterval string
 	UIPosition     ui.Tuple
 	UISize         ui.Tuple
+	FmtString      string
 }
 
 // CPUUsage reads values from /proc/stat to display cpu stats
@@ -41,7 +43,7 @@ func CPUUsage(c chan<- ui.PrintData) {
 		}
 		time.Sleep(duration)
 
-		oldData = _CPUUsage(c, oldData)
+		oldData = _CPUUsage(c, oldData, conf.CpuUsage)
 	}
 
 }
@@ -55,7 +57,8 @@ func confCPUUpdateInterval(conf *GolcondaConfig) string {
 	return updateInterval
 }
 
-func _CPUUsage(c chan<- ui.PrintData, oldData []cpuStatData) []cpuStatData {
+func _CPUUsage(c chan<- ui.PrintData, oldData []cpuStatData,
+	conf CPUUsageConfig) []cpuStatData {
 
 	newData := readProcStat()
 
@@ -66,7 +69,8 @@ func _CPUUsage(c chan<- ui.PrintData, oldData []cpuStatData) []cpuStatData {
 	}
 
 	for i := 0; i < len(oldData); i++ {
-		fmtUsageData := fmtCPUUsage(newData[i], oldData[i])
+		fmtUsageData := fmtCPUUsage(newData[i], oldData[i],
+			conf.FmtString)
 		pdata.Content = append(pdata.Content, fmtUsageData)
 	}
 
@@ -77,44 +81,47 @@ func _CPUUsage(c chan<- ui.PrintData, oldData []cpuStatData) []cpuStatData {
 	return newData
 }
 
-func fmtCPUUsage(newData, oldData cpuStatData) string {
+func fmtCPUUsage(newData, oldData cpuStatData, confFmt string) string {
 
 	diff := cpuStatData{
-		newData.title,
-		newData.user - oldData.user,
-		newData.kern - oldData.kern,
-		newData.idle - oldData.idle,
-		newData.irq - oldData.irq,
-		newData.guest - oldData.guest,
+		Title: newData.Title,
+		User:  newData.User - oldData.User,
+		Kern:  newData.Kern - oldData.Kern,
+		Idle:  newData.Idle - oldData.Idle,
+		Irq:   newData.Irq - oldData.Irq,
+		Guest: newData.Guest - oldData.Guest,
 	}
 
-	sum := diff.user + diff.kern + diff.idle + diff.irq + diff.guest
+	diff.Sum = diff.User + diff.Kern + diff.Idle + diff.Irq + diff.Guest
 
 	floatDiv := func(a, b int64) float32 {
 		return 100.0 * float32(a) / float32(b)
 	}
 
-	fmtString := fmt.Sprintf("%s  User %6.02f%% | Kern %6.02f%% | "+
-		"Idle %6.02f%% | Irq %6.02f%% | "+
-		"Guest %6.02f%%",
-		strings.ToUpper(diff.title),
-		floatDiv(diff.user, sum),
-		floatDiv(diff.kern, sum),
-		floatDiv(diff.idle, sum),
-		floatDiv(diff.irq, sum),
-		floatDiv(diff.guest, sum),
-	)
+	diff.UserPercent = floatDiv(diff.User, diff.Sum)
+	diff.KernPercent = floatDiv(diff.Kern, diff.Sum)
+	diff.IdlePercent = floatDiv(diff.Idle, diff.Sum)
+	diff.IrqPercent = floatDiv(diff.Irq, diff.Sum)
+	diff.GuestPercent = floatDiv(diff.Guest, diff.Sum)
+
+	fmtString := meta.Format(confFmt, diff)
 
 	return fmtString
 }
 
 type cpuStatData struct {
-	title string
-	user  int64
-	kern  int64
-	idle  int64
-	irq   int64
-	guest int64
+	Title        string
+	User         int64
+	Kern         int64
+	Idle         int64
+	Irq          int64
+	Guest        int64
+	Sum          int64
+	UserPercent  float32
+	KernPercent  float32
+	IdlePercent  float32
+	IrqPercent   float32
+	GuestPercent float32
 }
 
 func readProcStat() []cpuStatData {
@@ -166,11 +173,11 @@ func readUsageLine(line string) cpuStatData {
 	guestUsage := usageInts[8] + usageInts[9]
 
 	return cpuStatData{
-		title: title,
-		user:  userUsage,
-		kern:  kernUsage,
-		idle:  idleUsage,
-		irq:   irqUsage,
-		guest: guestUsage,
+		Title: strings.ToUpper(title),
+		User:  userUsage,
+		Kern:  kernUsage,
+		Idle:  idleUsage,
+		Irq:   irqUsage,
+		Guest: guestUsage,
 	}
 }

@@ -39,7 +39,9 @@
 		"UIPosition" : { "X" : 5, "Y" : 0 },
 
 		// size of the CPU data
-		"UISize" : { "X" : 10, "Y" : 100 }
+		"UISize" : { "X" : 10, "Y" : 100 },
+
+		"fmtString" : "<Title> User <UserPercent %6.02f>%% | Kern <KernPercent %6.02f>%% | Idle <IdlePercent %6.02f>%% | Irq <IrqPercent %6.02f>%% | Guest <GuestPercent %6.02f>%% "
 
 	},
 
