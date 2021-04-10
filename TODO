@@ -1,4 +1,15 @@
-- add basic ui, which prints to stdout. see https://stackoverflow.com/questions/37774983/clearing-the-screen-by-printing-a-character#37778152
+Arch:
+- a map that lets us encode a tree using key name hierarchy.
+  e.g. conf, conf.CpuInfo, conf.CpuInfo.FmtString ...
+
+- use map to store config
+- use map to store data
+
+- registers to calc data
+
+- seperate out storing data and updating the UI
+
+Features:
 - add per process cpu, swap usage indicators
 - add Notify() in UI
 - add colors to UI
