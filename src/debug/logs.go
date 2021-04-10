@@ -2,7 +2,6 @@ package debug
 
 import (
 	"fmt"
-	"os"
 	"time"
 )
 
@@ -15,7 +14,7 @@ const (
 )
 
 // TODO move to config file
-var _LogLevel = _DebugLogs
+var _LogLevel = _InfoLogs
 
 var _logger loggerInterface
 
@@ -67,8 +66,7 @@ func Warning(v ...interface{}) {
 
 // Bug is to log and crash
 func Bug(v ...interface{}) {
-	fmt.Fprintln(os.Stderr, v...)
-	PrintStackToStdErr()
+	s := fmt.Sprintln(v...)
 
 	caller := getCallerFunc(2)
 	header := []interface{}{"BUG: ", caller}
@@ -81,7 +79,7 @@ func Bug(v ...interface{}) {
 		_logger.Println("#", i, "|", caller)
 	}
 
-	os.Exit(-1)
+	panic(s)
 }
 
 // InitLogging inits logging

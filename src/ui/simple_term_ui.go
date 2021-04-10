@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	d "github.com/teja2010/golconda/src/debug"
 	"strings"
 )
 
@@ -25,7 +26,7 @@ func (s SimpleTermUI) String() string {
 
 // New create the SimpleTermUI
 func (s SimpleTermUI) New() UI {
-	s.sizeX = 20
+	s.sizeX = 30
 	s.sizeY = 120
 
 	s.uiContent = make([]string, s.sizeX)
@@ -42,19 +43,22 @@ func gotoPosition(x, y int) string {
 
 // Update sends data to SimpleTermUI
 func (s SimpleTermUI) Update(pdata PrintData) {
-	startRow := pdata.Position.X
-	endRow := startRow + pdata.Size.X
+	startRow := (pdata.Position.X)
+	endRow := (startRow + pdata.Size.X)
 
-	startCol := pdata.Position.Y
-	endCol := startCol + pdata.Size.Y
+	startCol := (pdata.Position.Y)
+	endCol := (startCol + pdata.Size.Y)
 
 	paddedContent := simpleTermUIpad(pdata)
+	d.DebugLog(paddedContent)
 
 	for row := startRow; row < endRow; row++ {
 		s.uiContent[row] = (s.uiContent[row][:startCol] +
 			paddedContent[row-startRow] +
 			s.uiContent[row][endCol:])
 	}
+
+	d.DebugLog(s.uiContent)
 
 	fmt.Printf(CLR_SCREEN + gotoPosition(0, 0))
 	fmt.Print(s.String())

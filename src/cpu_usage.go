@@ -14,8 +14,6 @@ import (
 
 const (
 	_PROC_STAT = "/proc/stat"
-
-	_HEADER_CPU_USAGE = "CPU USAGE:"
 )
 
 // CPUUsageConfig config for cpu usage
@@ -23,7 +21,9 @@ type CPUUsageConfig struct {
 	UpdateInterval string
 	UIPosition     ui.Tuple
 	UISize         ui.Tuple
-	FmtString      string
+	FmtString      []string
+	PerCPUStatFmt  string
+	CPUs           string
 }
 
 // CPUUsage reads values from /proc/stat to display cpu stats
@@ -57,59 +57,112 @@ func confCPUUpdateInterval(conf *GolcondaConfig) string {
 	return updateInterval
 }
 
-func _CPUUsage(c chan<- ui.PrintData, oldData []cpuStatData,
-	conf CPUUsageConfig) []cpuStatData {
+func _CPUUsage(c chan<- ui.PrintData, oldData cpuStatData,
+	conf CPUUsageConfig) cpuStatData {
 
 	newData := readProcStat()
+	diffData := newData.makeDiff(oldData, conf)
 
 	pdata := ui.PrintData{
 		Position: ui.Tuple{X: 5, Y: 0},
 		Size:     ui.Tuple{X: 10, Y: 100},
-		Content:  []string{_HEADER_CPU_USAGE},
+		Content:  []string{},
 	}
 
-	for i := 0; i < len(oldData); i++ {
-		fmtUsageData := fmtCPUUsage(newData[i], oldData[i],
-			conf.FmtString)
-		pdata.Content = append(pdata.Content, fmtUsageData)
+	for _, fmtStr := range conf.FmtString {
+		if fmtStr == "[PerCPUStatFmt]" {
+			pdata.Content = append(pdata.Content,
+				diffData.PerCPUStatFmt...)
+		} else {
+			contentStr := meta.Format(fmtStr, diffData)
+			pdata.Content = append(pdata.Content, contentStr)
+		}
 	}
 
 	// finally push into the channel
 	c <- pdata
-
-	d.DebugLog(pdata.Content[:3])
 	return newData
 }
 
-func fmtCPUUsage(newData, oldData cpuStatData, confFmt string) string {
+func (newData cpuStatData) makeDiff(oldData cpuStatData,
+	conf CPUUsageConfig) cpuStatData {
 
-	diff := cpuStatData{
-		Title: newData.Title,
-		User:  newData.User - oldData.User,
-		Kern:  newData.Kern - oldData.Kern,
-		Idle:  newData.Idle - oldData.Idle,
-		Irq:   newData.Irq - oldData.Irq,
-		Guest: newData.Guest - oldData.Guest,
-	}
-
-	diff.Sum = diff.User + diff.Kern + diff.Idle + diff.Irq + diff.Guest
+	diffData := cpuStatData{}
+	NumOfCPUs := len(newData.stats)
 
 	floatDiv := func(a, b int64) float32 {
 		return 100.0 * float32(a) / float32(b)
 	}
 
-	diff.UserPercent = floatDiv(diff.User, diff.Sum)
-	diff.KernPercent = floatDiv(diff.Kern, diff.Sum)
-	diff.IdlePercent = floatDiv(diff.Idle, diff.Sum)
-	diff.IrqPercent = floatDiv(diff.Irq, diff.Sum)
-	diff.GuestPercent = floatDiv(diff.Guest, diff.Sum)
+	for i := 0; i < NumOfCPUs; i++ {
+		d.DebugLog("TTT", i, len(newData.stats))
+		nd := newData.stats[i]
+		od := oldData.stats[i]
 
-	fmtString := meta.Format(confFmt, diff)
+		diff := perCpuStatData{
+			Title: nd.Title,
+			User:  nd.User - od.User,
+			Kern:  nd.Kern - od.Kern,
+			Idle:  nd.Idle - od.Idle,
+			Irq:   nd.Irq - od.Irq,
+			Guest: nd.Guest - od.Guest,
+		}
 
-	return fmtString
+		diff.Sum = diff.User + diff.Kern + diff.Idle + diff.Irq + diff.Guest
+		diff.UserPercent = floatDiv(diff.User, diff.Sum)
+		diff.KernPercent = floatDiv(diff.Kern, diff.Sum)
+		diff.IdlePercent = floatDiv(diff.Idle, diff.Sum)
+		diff.IrqPercent = floatDiv(diff.Irq, diff.Sum)
+		diff.GuestPercent = floatDiv(diff.Guest, diff.Sum)
+
+		diffData.stats = append(diffData.stats, diff)
+	}
+
+	rangeInt := func(start, end int) []int {
+		ret := []int{}
+		for i := start; i < end; i++ {
+			ret = append(ret, i)
+		}
+		return ret
+	}
+
+	parseCPUs := func(cpus string, NumOfCPUs int) []int {
+		// "overall,1,2,5,2" -> []int{0, 2, 3, 6, 3}
+		if cpus == "all" {
+			return rangeInt(0, NumOfCPUs)
+		}
+
+		ret := []int{}
+		for _, n := range strings.Split(cpus, ",") {
+			n = strings.TrimSpace(n)
+			if n == "overall" {
+				ret = append(ret, 0)
+			} else {
+				num, err := strconv.Atoi(n)
+				if err == nil && num+1 < NumOfCPUs {
+					ret = append(ret, num+1)
+				}
+			}
+		}
+		return ret
+	}
+
+	for _, statsIdx := range parseCPUs(conf.CPUs, NumOfCPUs) {
+		diffData.PerCPUStatFmt = append(
+			diffData.PerCPUStatFmt,
+			meta.Format(conf.PerCPUStatFmt,
+				diffData.stats[statsIdx]))
+	}
+
+	return diffData
 }
 
 type cpuStatData struct {
+	stats         []perCpuStatData
+	PerCPUStatFmt []string
+}
+
+type perCpuStatData struct {
 	Title        string
 	User         int64
 	Kern         int64
@@ -124,11 +177,11 @@ type cpuStatData struct {
 	GuestPercent float32
 }
 
-func readProcStat() []cpuStatData {
+func readProcStat() cpuStatData {
 	_contents, err := ioutil.ReadFile(_PROC_STAT)
 	if err != nil {
 		d.Error("Unable to read", _PROC_STAT)
-		return []cpuStatData{}
+		return cpuStatData{}
 	}
 
 	contents := string(_contents)
@@ -136,12 +189,14 @@ func readProcStat() []cpuStatData {
 
 	cpuLines := TakeWhile(lines, Regex2Func("^cpu"))
 
-	usageData := FmapSCpuStat(cpuLines, readUsageLine)
+	usageData := cpuStatData{
+		stats: FmapSCpuStat(cpuLines, readUsageLine),
+	}
 
 	return usageData
 }
 
-func readUsageLine(line string) cpuStatData {
+func readUsageLine(line string) perCpuStatData {
 	_words := strings.Split(line, " ")
 
 	notEmpty := func(l string) bool { return l != "" }
@@ -172,7 +227,7 @@ func readUsageLine(line string) cpuStatData {
 	// 7 is steal
 	guestUsage := usageInts[8] + usageInts[9]
 
-	return cpuStatData{
+	return perCpuStatData{
 		Title: strings.ToUpper(title),
 		User:  userUsage,
 		Kern:  kernUsage,

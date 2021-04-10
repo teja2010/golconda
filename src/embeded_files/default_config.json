@@ -23,15 +23,32 @@
 		"simpleTerm" : {
 
 			// Size of the terminal
-			"Size": { "X" : 30, "Y": 80 }
+			"Size": { "X" : 40, "Y": 100 }
 		}
 
 	},
 
 
+	"memInfo" : { // Configure Mem Information
+		"updateInterval" : "1s",
+
+		// position of the MemInfo
+		"UIPosition" : { "X" : 0, "Y" : 0 },
+
+		// size of the MemInfo
+		"UISize" : { "X" : 4, "Y" : 100 },
+
+		"fmtString" : [
+			"Memory Info",
+			"Mem:  Total  <TotalMemH %10s> | Free   <FreeMemH %10s> | Available <AvailMemH %10s>",
+			"Mem:  Cached <CachedMemH %10s> | Shared <SharedMemH %10s> | Used <UsedMemH %10s> (Active <ActiveMemH>)",
+			"Swap: Total  <TotalSwapH %10s> | Used   <UsedSwapH %10s> | Free <FreeSwapH %10s>"
+		]
+	},
+
 	"cpuUsage" : { // Configure CPU usage information
 
-		"updateInterval" : "1s",
+		"UpdateInterval" : "1s",
 		// rate at which CPU values need to be polled. If invalid, the
 		// global value is used
 
@@ -41,17 +58,39 @@
 		// size of the CPU data
 		"UISize" : { "X" : 10, "Y" : 100 },
 
-		"fmtString" : "<Title> User <UserPercent %6.02f>%% | Kern <KernPercent %6.02f>%% | Idle <IdlePercent %6.02f>%% | Irq <IrqPercent %6.02f>%% | Guest <GuestPercent %6.02f>%% "
 
+		"fmtString": [
+			"CPU USAGE",
+			"[PerCPUStatFmt]"
+		],
+
+		"PerCPUStatFmt" :
+			"<Title> User <UserPercent %6.02f>%% | Kern <KernPercent %6.02f>%% | Idle <IdlePercent %6.02f>%% | Irq <IrqPercent %6.02f>%% | Guest <GuestPercent %6.02f>%%",
+		"CPUs" : "all"
+		// comma seperated list of CPUs. use "all" for all info
+		// e.g. "overall"   -> only the overall info
+		// or "2,4,6,8"     -> only cpus 2, 4, 6 and 8
+		// or "all"         -> everything
 	},
 
-	"memInfo" : { // Configure Mem Information
-		"updateInterval" : "1s",
+	"ProcMemInfo": {
+		"updateInterval" : "3s",
 
-		// position of the MemInfo
-		"UIPosition" : { "X" : 0, "Y" : 0 },
+		"UIPosition" : {"X" : 16, "Y" : 0},
 
-		// size of the MemInfo
-		"UISize" : { "X" : 2, "Y" : 100 }
+		"UISize" : {"X": 10, "Y": 100},
+
+		"fmtString": [
+			"Process Memory",
+			"    Swap    | Pid : Name",
+			"[PerProcessFmtString]"
+		],
+
+		"PerProcessFmtString" :
+			"<VmSwap %8d> kB | <Pid %6s>: <Name>",
+
+		"SortBy" : "VmSwap",
+		"Top" : 6,
+		"Bottom": 0
 	}
 }

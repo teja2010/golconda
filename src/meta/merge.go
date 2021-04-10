@@ -50,15 +50,15 @@ func leftMerge(_leftv, _rightv, _zerov reflect.Value) error {
 		rEl := rElems.Field(i)
 		zEl := zElems.Field(i)
 
-		if isRightEqualToDefault(rEl, zEl) {
-			if err := safeCopy(rEl, lEl, zEl); err != nil {
-				d.Error("safeCopy of type", lEl.Type().String(),
+		if lEl.Kind() == reflect.Struct {
+			if err := iterCopy(lEl, rEl, zEl); err != nil {
+				d.Error("iterCopy of type", lEl.Type().String(),
 					"failed")
 				return err
 			}
-		} else {
-			if err := iterCopy(lEl, rEl, zEl); err != nil {
-				d.Error("iterCopy of type", lEl.Type().String(),
+		} else if isRightEqualToDefault(rEl, zEl) {
+			if err := safeCopy(rEl, lEl, zEl); err != nil {
+				d.Error("safeCopy of type", lEl.Type().String(),
 					"failed")
 				return err
 			}
@@ -114,6 +114,34 @@ func isRightEqualToDefault(_rightv, _zerov reflect.Value) bool {
 	case reflect.String:
 		return _rightv.String() == _zerov.String()
 
+	case reflect.Slice:
+		rlen := _rightv.Len()
+
+		// zero slice is []
+		// so return true if rlen is zero.
+		return rlen == 0
+
+		//zlen := _zerov.Len()
+		//if rlen != zlen {
+		//	return false
+		//}
+		//
+		//rslice := _rightv.Slice(0, rlen)
+		//zslice := _zerov.Slice(0, zlen)
+		//
+		//for i := 0; i < rlen; i++ {
+		//	if rslice.Field(i) != zslice.Field(i) {
+		//		return false
+		//	}
+		//}
+		//return true
+		//
+		//eq := reflect.DeepEqual(_rightv.Slice(0, rlen), _zerov.Slice(0, zlen))
+		//return eq
+
+	case reflect.Struct:
+		return false // structs need to be handled by iterCopy
+
 	default:
 		d.Warning("Unhandled Type", _rightv.Kind())
 	}
@@ -123,6 +151,8 @@ func isRightEqualToDefault(_rightv, _zerov reflect.Value) bool {
 
 func typeCheck(left, right, zero reflect.Value) error {
 
+	d.DebugLog("Types", left.Type().String(), right.Type().String(),
+		zero.Type().String())
 	if left.Type() != right.Type() || left.Type() != zero.Type() {
 		return errors.New("iterCopy Types dont match" +
 			left.Type().String() +

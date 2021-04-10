@@ -44,7 +44,7 @@ func Unmarshal(data []byte, v interface{}) error {
 	lines = filter(lines, nonEmptyLines)
 
 	data = []byte(strings.Join(lines, NEWLINE))
-	//d.DebugLog("Uncommented config \n", string(data))
+	d.DebugLog("Uncommented config \n", string(data))
 
 	err = json.Unmarshal(data, v)
 	if err != nil {

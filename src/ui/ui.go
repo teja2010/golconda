@@ -1,5 +1,9 @@
 package ui
 
+import (
+	"strings"
+)
+
 var _ui UI
 
 // Tuple of ints
@@ -36,4 +40,14 @@ func Init() {
 // Update - update the UI
 func Update(pdata PrintData) {
 	_ui.Update(pdata)
+}
+
+func SplitLines(_lines []string) []string {
+	lines := []string{}
+
+	for _, l := range _lines {
+		lines = append(lines, strings.Split(l, "\n")...)
+	}
+
+	return lines
 }

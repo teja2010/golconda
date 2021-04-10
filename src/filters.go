@@ -1,6 +1,7 @@
 package golconda
 
 import (
+	"io/fs"
 	"regexp"
 	"strings"
 
@@ -59,14 +60,23 @@ func TakeWhile(lines []string, f func(string) bool) []string {
 
 // FindLine finds the first line that matches the condition
 func FindLine(lines []string, f func(string) bool) string {
+	ret := TryFindLine(lines, f, "")
+	if ret == "" {
+		d.Bug("Unable to find a line matching", f)
+		return "BUG!! BUG!!"
+	}
+
+	return ret
+}
+
+func TryFindLine(lines []string, f func(string) bool, fallback string) string {
 	for _, line := range lines {
 		if f(line) {
 			return line
 		}
 	}
 
-	d.Bug("Unable to find a line matching", f)
-	return "BUG!! BUG!!"
+	return fallback
 }
 
 // clean-up the functions below later using generics
@@ -105,8 +115,8 @@ func FmapSI64(lines []string, f func(string) int64) []int64 {
 }
 
 // FmapSCpuStat fmaps string to cpuStatData
-func FmapSCpuStat(lines []string, f func(string) cpuStatData) []cpuStatData {
-	res := make([]cpuStatData, len(lines))
+func FmapSCpuStat(lines []string, f func(string) perCpuStatData) []perCpuStatData {
+	res := make([]perCpuStatData, len(lines))
 
 	for i, l := range lines {
 		res[i] = f(l)
@@ -120,4 +130,37 @@ func Words(line string) []string {
 	_words := strings.Split(line, " ")
 	notEmpty := func(w string) bool { return w != "" }
 	return Filter(_words, notEmpty)
+}
+
+func FilterFileInfo(files []fs.FileInfo, f func(fs.FileInfo) (string, bool)) []string {
+	ret := make([]string, 0)
+	for _, finfo := range files {
+		if fileName, ok := f(finfo); ok {
+			ret = append(ret, fileName)
+		}
+	}
+
+	return ret
+}
+
+func FmapFilePerProcessData(files []string, f func(string) string) []string {
+	ret := make([]string, len(files))
+
+	for i, file := range files {
+		ret[i] = f(file)
+	}
+
+	return ret
+}
+
+func FmapPerProcessData(files []string,
+	f func(string) perProcessStat) []perProcessStat {
+
+	ret := make([]perProcessStat, len(files))
+
+	for i, file := range files {
+		ret[i] = f(file)
+	}
+
+	return ret
 }

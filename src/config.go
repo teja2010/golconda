@@ -20,10 +20,11 @@ type GlobalConfig struct {
 	UI             string
 }
 type GolcondaConfig struct {
-	Global   GlobalConfig
-	UI       ui.UIConfig
-	CpuUsage CPUUsageConfig
-	MemInfo  MemInfoConfig
+	Global      GlobalConfig
+	UI          ui.UIConfig
+	CpuUsage    CPUUsageConfig
+	MemInfo     MemInfoConfig
+	ProcMemInfo ProcessMemConfig
 }
 
 // RegisteredFunction is the type which registered functions must support
@@ -34,6 +35,7 @@ func RegisteredFunctions() []RegisteredFunction {
 	return []RegisteredFunction{
 		CPUUsage,
 		MemInfo,
+		ProcessMemoryInfo,
 	}
 }
 
@@ -94,7 +96,9 @@ func readDefaultConfig() {
 		d.Bug("Default config unmarshall failed", err)
 	}
 
+	d.DebugLog("=======================================================")
 	d.DebugLog("Read default Config", d.ToString(_defaultConfig))
+	d.DebugLog("=======================================================")
 }
 
 // the only writer
@@ -108,7 +112,7 @@ func readConfig(data []byte) {
 		d.Error("Unmarshall config data failed", err)
 		return
 	}
-	d.DebugLog("Read Config", d.ToString(_config))
+	d.DebugLog("Read Config from File", d.ToString(_config))
 
 	err = meta.LeftMerge(&_defaultConfig, _config, &GolcondaConfig{})
 	if err != nil {
@@ -116,7 +120,9 @@ func readConfig(data []byte) {
 		//return
 	}
 
-	d.DebugLog("Read Config", d.ToString(_config))
+	d.DebugLog("=======================================================")
+	d.DebugLog("Merged Config", d.ToString(_config))
+	d.DebugLog("=======================================================")
 }
 
 func findConfData() ([]byte, string) {
@@ -135,6 +141,11 @@ func findConfData() ([]byte, string) {
 
 func waitForChange(cfile string, lastRead time.Time) {
 	for {
+		if cfile == "" {
+			time.Sleep(60 * time.Second)
+			continue
+		}
+
 		time.Sleep(1 * time.Second)
 
 		info, err := os.Stat(cfile)
